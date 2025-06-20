@@ -570,6 +570,197 @@
                 </div>
             </div>
         </div>
+        <audio id="backgroundMusic" loop autoplay muted>
+    <source src="https://www.bensound.com/bensound-music/bensound-ukulele.mp3" type="audio/mpeg">
+    <source src="https://freesound.org/data/previews/316/316847_4939433-lq.mp3" type="audio/mpeg">
+    Your browser does not support the audio element.
+</audio>
+
+<!-- Hidden music control (will be invisible after music starts) -->
+<button id="musicToggle" style="position: fixed; top: 10px; right: 10px; z-index: 1000; display: none;">🎵</button>
+
+<script>
+const audio = document.getElementById('backgroundMusic');
+const toggleBtn = document.getElementById('musicToggle');
+let musicPlaying = false;
+let audioContext;
+let oscillator;
+let gainNode;
+let currentTime = 0;
+
+// Create continuous ambient music
+function createContinuousMusic() {
+    if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    
+    if (audioContext.state === 'suspended') {
+        audioContext.resume();
+    }
+    
+    // Create multiple oscillators for a richer sound
+    const frequencies = [220, 330, 440]; // A3, E4, A4 chord
+    const oscillators = [];
+    
+    frequencies.forEach((freq, index) => {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, audioContext.currentTime);
+        
+        // Different volumes for harmony
+        gain.gain.setValueAtTime(0.02 - (index * 0.005), audioContext.currentTime);
+        
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        
+        osc.start();
+        oscillators.push(osc);
+    });
+    
+    return oscillators;
+}
+
+// Start Web Audio immediately (bypasses autoplay restrictions better)
+function startWebAudioImmediately() {
+    try {
+        const oscillators = createContinuousMusic();
+        musicPlaying = true;
+        console.log('Web Audio started automatically');
+        
+        // Try to also start HTML5 audio silently
+        audio.muted = true;
+        audio.play().then(() => {
+            // Gradually unmute if it works
+            setTimeout(() => {
+                if (musicPlaying) {
+                    audio.muted = false;
+                    audio.volume = 0.3;
+                }
+            }, 1000);
+        }).catch(() => {
+            console.log('HTML5 audio blocked, continuing with Web Audio');
+        });
+        
+    } catch(e) {
+        console.log('Web Audio failed:', e);
+        // Fallback to waiting for interaction
+        setupInteractionFallback();
+    }
+}
+
+// Fallback for browsers that block everything
+function setupInteractionFallback() {
+    toggleBtn.style.display = 'block';
+    ['click', 'touchstart', 'keydown'].forEach(eventType => {
+        document.addEventListener(eventType, () => {
+            if (!musicPlaying) {
+                forceStartMusic();
+            }
+        }, { once: true, passive: true });
+    });
+}
+
+// Original force start function (improved)
+function forceStartMusic() {
+    // Start Web Audio
+    try {
+        createContinuousMusic();
+        musicPlaying = true;
+    } catch(e) {
+        console.log('Web Audio failed');
+    }
+    
+    // Start HTML5 audio
+    audio.muted = false;
+    audio.volume = 0.3;
+    
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+        playPromise.then(() => {
+            console.log('HTML5 Audio playing');
+            toggleBtn.style.display = 'none';
+        }).catch(error => {
+            console.log('HTML5 audio blocked:', error);
+        });
+    }
+}
+
+// IMMEDIATE START - Run as soon as script loads
+(function immediateStart() {
+    // Try Web Audio immediately - this often works without user interaction
+    setTimeout(startWebAudioImmediately, 0);
+    
+    // Keep trying aggressively
+    let attempts = 0;
+    const retryInterval = setInterval(() => {
+        if (!musicPlaying && attempts < 10) {
+            startWebAudioImmediately();
+            attempts++;
+        } else {
+            clearInterval(retryInterval);
+            if (!musicPlaying) {
+                setupInteractionFallback();
+            }
+        }
+    }, 500);
+})();
+
+// Also try on DOM events
+document.addEventListener('DOMContentLoaded', startWebAudioImmediately);
+window.addEventListener('load', startWebAudioImmediately);
+
+// Button functionality (now mostly hidden)
+toggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (musicPlaying) {
+        // Stop all audio
+        audio.pause();
+        if (audioContext) {
+            audioContext.suspend();
+        }
+        musicPlaying = false;
+        toggleBtn.textContent = '🎵';
+    } else {
+        forceStartMusic();
+        toggleBtn.textContent = '🔇';
+    }
+});
+
+// Set audio properties for maximum compatibility
+audio.preload = 'auto';
+audio.loop = true;
+
+// Additional trick: Try to start on any page event
+['scroll', 'resize', 'focus'].forEach(eventType => {
+    window.addEventListener(eventType, () => {
+        if (!musicPlaying) {
+            startWebAudioImmediately();
+        }
+    }, { once: true, passive: true });
+});
+</script>
+
+<!-- Add this CSS to make the button less intrusive -->
+<style>
+#musicToggle {
+    background: rgba(0,0,0,0.7);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: opacity 0.3s;
+}
+
+#musicToggle:hover {
+    opacity: 0.8;
+}
+</style>
+
 
         <!-- Timeline Item 4: Recognition -->
         <div class="timeline-item">
