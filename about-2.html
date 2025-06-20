@@ -289,7 +289,7 @@ function startWebAudioImmediately() {
             setTimeout(() => {
                 if (musicPlaying) {
                     audio.muted = false;
-                    audio.volume = 0.3;
+                    audio.volume = 0.6;
                 }
             }, 1000);
         }).catch(() => {
@@ -327,7 +327,7 @@ function forceStartMusic() {
     
     // Start HTML5 audio
     audio.muted = false;
-    audio.volume = 0.3;
+    audio.volume = 0.6;
     
     const playPromise = audio.play();
     if (playPromise !== undefined) {
